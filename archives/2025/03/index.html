@@ -19,7 +19,7 @@
     
     <style>body:before{ content: ''; background-image: url(https://api.paugram.com/wallpaper?source=gh) }</style>
     
-<meta name="generator" content="Hexo 7.3.0"></head>
+<meta name="generator" content="Hexo 8.1.1"></head>
 
   <body>
     <header>
@@ -42,6 +42,8 @@
                 
             </div>
         </div>
+        
+            <a href="/categories/Life/">生活随笔</a>
         
             <a href="/about">关于我</a>
         
@@ -129,8 +131,11 @@
 
 
 <script>
-    var themeConfig = {&#34;copyright&#34;:true,&#34;night&#34;:false};
+	var themeConfig = {"copyright":true,"night":true,"search":{"enable":true,"path":"search.xml","field":"post","content":true},"lazyload":{"enable":true,"loading_img":"/img/loading.gif"},"reading_progress":{"enable":true,"color":"#3273dc","height":"3px"},"code_copy":true}; 
     var hingle = new Paul_Hingle(themeConfig);
+	if (localStorage.getItem('dark-mode') === 'true' || (themeConfig.night && !localStorage.getItem('dark-mode'))) {
+		document.body.classList.add('night');
+	}
 </script>
   </body>
 </html>

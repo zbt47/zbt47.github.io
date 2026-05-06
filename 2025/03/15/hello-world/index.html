@@ -19,7 +19,7 @@
     
     <style>body:before{ content: ''; background-image: url(https://api.paugram.com/wallpaper?source=gh) }</style>
     
-<meta name="generator" content="Hexo 7.3.0"></head>
+<meta name="generator" content="Hexo 8.1.1"></head>
 
   <body>
     <header>
@@ -43,6 +43,8 @@
             </div>
         </div>
         
+            <a href="/categories/Life/">生活随笔</a>
+        
             <a href="/about">关于我</a>
         
             <a href="/friends">朋友们</a>
@@ -61,7 +63,7 @@
         </section>
         <article class="post-content">
         
-            <blockquote>这篇文章上次修改于 413 天前，可能其部分内容已经发生变化，如有疑问可询问作者。</blockquote>
+            <blockquote>这篇文章上次修改于 418 天前，可能其部分内容已经发生变化，如有疑问可询问作者。</blockquote>
         
             <p>Welcome to <a target="_blank" rel="noopener" href="https://hexo.io/">Hexo</a>! This is your very first post. Check <a target="_blank" rel="noopener" href="https://hexo.io/docs/">documentation</a> for more info. If you get any problems when using Hexo, you can find the answer in <a target="_blank" rel="noopener" href="https://hexo.io/docs/troubleshooting.html">troubleshooting</a> or you can ask me on <a target="_blank" rel="noopener" href="https://github.com/hexojs/hexo/issues">GitHub</a>.</p>
 <h2 id="Quick-Start"><a href="#Quick-Start" class="headerlink" title="Quick Start"></a>Quick Start</h2><h3 id="Create-a-new-post"><a href="#Create-a-new-post" class="headerlink" title="Create a new post"></a>Create a new post</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo new <span class="string">&quot;My New Post&quot;</span></span><br></pre></td></tr></table></figure>
@@ -98,7 +100,7 @@
         
             <div class="author-info">
                 <h4>有风的季节</h4>
-                <p>请在这里设置你的作者信息</p>
+                <p>万物皆有裂痕，那是光照进来的地方</p>
             </div>
         </section>
     
@@ -138,8 +140,11 @@
 
 
 <script>
-    var themeConfig = {&#34;copyright&#34;:true,&#34;night&#34;:false};
+	var themeConfig = {"copyright":true,"night":true,"search":{"enable":true,"path":"search.xml","field":"post","content":true},"lazyload":{"enable":true,"loading_img":"/img/loading.gif"},"reading_progress":{"enable":true,"color":"#3273dc","height":"3px"},"code_copy":true}; 
     var hingle = new Paul_Hingle(themeConfig);
+	if (localStorage.getItem('dark-mode') === 'true' || (themeConfig.night && !localStorage.getItem('dark-mode'))) {
+		document.body.classList.add('night');
+	}
 </script>
   </body>
 </html>

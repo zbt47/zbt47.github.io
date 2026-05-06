@@ -19,7 +19,7 @@
     
     <style>body:before{ content: ''; background-image: url(https://api.paugram.com/wallpaper?source=gh) }</style>
     
-<meta name="generator" content="Hexo 7.3.0"></head>
+<meta name="generator" content="Hexo 8.1.1"></head>
 
   <body>
     <header>
@@ -43,6 +43,8 @@
             </div>
         </div>
         
+            <a href="/categories/Life/">生活随笔</a>
+        
             <a href="/about">关于我</a>
         
             <a href="/friends">朋友们</a>
@@ -61,7 +63,7 @@
         </section>
         <article class="post-content">
         
-            <blockquote>这篇文章上次修改于 402 天前，可能其部分内容已经发生变化，如有疑问可询问作者。</blockquote>
+            <blockquote>这篇文章上次修改于 407 天前，可能其部分内容已经发生变化，如有疑问可询问作者。</blockquote>
         
             <h1 id="从零开始学习Hexo博客搭建（简单部署篇）"><a href="#从零开始学习Hexo博客搭建（简单部署篇）" class="headerlink" title="从零开始学习Hexo博客搭建（简单部署篇）"></a>从零开始学习Hexo博客搭建（简单部署篇）</h1><p>​		零基础学习博客搭建，尽管目前的博客搭建方式与平台众多，但出于对学习投入成本的考量（<del>(´;ω;&#96;)主要还是资金不足bushi</del>），选择博客平台时选择了完全免费的hexo+github搭建方案。接下来我将以我的实际学习过程记录博客搭建、功能添加与完善以及学习时所遇到的问题与心得体会，希望可以一直坚持下去(ゝ∀･)。</p>
 <h2 id="环境准备，目前只适用于win平台，搭建过程中注意自身网络环境"><a href="#环境准备，目前只适用于win平台，搭建过程中注意自身网络环境" class="headerlink" title="环境准备，目前只适用于win平台，搭建过程中注意自身网络环境"></a>环境准备，目前只适用于win平台，搭建过程中注意自身网络环境</h2><h3 id="1-安装node-js以及git-官网下载并安装"><a href="#1-安装node-js以及git-官网下载并安装" class="headerlink" title="1.安装node.js以及git  (官网下载并安装)"></a>1.安装node.js以及git  (官网下载并安装)</h3><h3 id="2-检查安装是否成功"><a href="#2-检查安装是否成功" class="headerlink" title="2.检查安装是否成功"></a>2.检查安装是否成功</h3><p>​		使用电脑快捷键<code>win</code>+<code>R</code>打开运行程序，输入<code>cmd</code>回车进入。<strong>依次</strong>输入以下命令进行检查，若没有报错即为安装成功。</p>
@@ -136,7 +138,7 @@
         
             <div class="author-info">
                 <h4>有风的季节</h4>
-                <p>请在这里设置你的作者信息</p>
+                <p>万物皆有裂痕，那是光照进来的地方</p>
             </div>
         </section>
     
@@ -176,8 +178,11 @@
 
 
 <script>
-    var themeConfig = {&#34;copyright&#34;:true,&#34;night&#34;:false};
+	var themeConfig = {"copyright":true,"night":true,"search":{"enable":true,"path":"search.xml","field":"post","content":true},"lazyload":{"enable":true,"loading_img":"/img/loading.gif"},"reading_progress":{"enable":true,"color":"#3273dc","height":"3px"},"code_copy":true}; 
     var hingle = new Paul_Hingle(themeConfig);
+	if (localStorage.getItem('dark-mode') === 'true' || (themeConfig.night && !localStorage.getItem('dark-mode'))) {
+		document.body.classList.add('night');
+	}
 </script>
   </body>
 </html>
