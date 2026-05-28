@@ -39,15 +39,13 @@
         <div class="has-child">
             <a href>分类</a>
             <div class="sub-menu">
-                
+                <a class="category-link" href="/categories/%E5%85%B4%E8%B6%A3/">兴趣</a><a class="category-link" href="/categories/%E5%AD%A6%E4%B9%A0/">学习</a>
             </div>
         </div>
         
-            <a href="/categories/Life/">生活随笔</a>
+            <a href="/Life">生活随笔</a>
         
-            <a href="/about">关于我</a>
-        
-            <a href="/friends">朋友们</a>
+            <a href="/about-me">关于我</a>
         
     </nav>
 </header>
@@ -89,6 +87,8 @@
         <div class="post-meta">
             <time class="date">2026.05.28</time>
             
+                <span class="category"><a class="category-link" href="/categories/%E5%AD%A6%E4%B9%A0/">学习</a></span>
+            
             
                 <span class="tags"><a class="-none-link" href="/tags/%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95/" rel="tag">学习记录</a></span>
             
@@ -105,6 +105,8 @@
         <div class="post-meta">
             <time class="date">2026.05.06</time>
             
+                <span class="category"><a class="category-link" href="/categories/%E5%85%B4%E8%B6%A3/">兴趣</a></span>
+            
             
                 <span class="tags"><a class="-none-link" href="/tags/%E7%94%B5%E5%AD%90%E4%BA%A7%E5%93%81%E6%94%B6%E8%97%8F/" rel="tag">电子产品收藏</a></span>
             
@@ -120,6 +122,8 @@
     
         <div class="post-meta">
             <time class="date">2025.03.25</time>
+            
+                <span class="category"><a class="category-link" href="/categories/%E5%AD%A6%E4%B9%A0/">学习</a></span>
             
             
                 <span class="tags"><a class="-none-link" href="/tags/%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95/" rel="tag">学习记录</a></span>
@@ -182,7 +186,7 @@
 
 
 <script>
-	var themeConfig = {"copyright":true,"night":true,"search":{"enable":true,"path":"search.xml","field":"post","content":true},"lazyload":{"enable":true,"loading_img":"/img/loading.gif"},"reading_progress":{"enable":true,"color":"#3273dc","height":"3px"},"code_copy":true}; 
+	var themeConfig = {"copyright":true,"night":true}; 
     var hingle = new Paul_Hingle(themeConfig);
 	if (localStorage.getItem('dark-mode') === 'true' || (themeConfig.night && !localStorage.getItem('dark-mode'))) {
 		document.body.classList.add('night');

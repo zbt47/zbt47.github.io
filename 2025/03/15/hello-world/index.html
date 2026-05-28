@@ -39,15 +39,13 @@
         <div class="has-child">
             <a href>分类</a>
             <div class="sub-menu">
-                
+                <a class="category-link" href="/categories/%E5%85%B4%E8%B6%A3/">兴趣</a><a class="category-link" href="/categories/%E5%AD%A6%E4%B9%A0/">学习</a>
             </div>
         </div>
         
-            <a href="/categories/Life/">生活随笔</a>
+            <a href="/Life">生活随笔</a>
         
-            <a href="/about">关于我</a>
-        
-            <a href="/friends">朋友们</a>
+            <a href="/about-me">关于我</a>
         
     </nav>
 </header>
@@ -140,7 +138,7 @@
 
 
 <script>
-	var themeConfig = {"copyright":true,"night":true,"search":{"enable":true,"path":"search.xml","field":"post","content":true},"lazyload":{"enable":true,"loading_img":"/img/loading.gif"},"reading_progress":{"enable":true,"color":"#3273dc","height":"3px"},"code_copy":true}; 
+	var themeConfig = {"copyright":true,"night":true}; 
     var hingle = new Paul_Hingle(themeConfig);
 	if (localStorage.getItem('dark-mode') === 'true' || (themeConfig.night && !localStorage.getItem('dark-mode'))) {
 		document.body.classList.add('night');
