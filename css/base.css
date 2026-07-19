@@ -1,0 +1,159 @@
+/* ============================================================
+   基础层：重置 + 排版 + Markdown 正文
+   只引用 tokens.css 中的变量，不出现任何硬编码颜色。
+   ============================================================ */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font: var(--type-body);
+  color: var(--md-on-surface);
+  background: var(--md-surface);
+  -webkit-text-size-adjust: 100%;
+  transition: background var(--dur-medium) var(--ease-emphasized),
+              color var(--dur-medium) var(--ease-emphasized);
+}
+
+a {
+  color: var(--md-primary);
+  text-decoration: none;
+  transition: color var(--dur-short);
+}
+a:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+img { max-width: 100%; height: auto; border-radius: var(--shape-md); }
+
+::selection { background: var(--md-primary-container); color: var(--md-on-primary-container); }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb {
+  background: var(--md-outline);
+  border-radius: var(--shape-full);
+  border: 2px solid var(--md-surface);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--md-on-surface-variant); }
+
+/* --------- Markdown 正文（.prose） --------- */
+
+.prose h1 { font: var(--type-headline); margin: 2rem 0 .75rem; }
+.prose h2 {
+  font: var(--type-title);
+  margin: 2rem 0 .75rem;
+  padding-bottom: .4rem;
+  border-bottom: 1px solid var(--md-outline-variant);
+}
+.prose h3 { font: var(--type-label); font-size: 1.1rem; margin: 1.5rem 0 .5rem; }
+.prose h4, .prose h5, .prose h6 { font: var(--type-label); margin: 1.25rem 0 .5rem; }
+
+.prose p { margin: 0 0 1rem; }
+
+/* em / strong 恢复标准语义：斜体就是斜体 */
+.prose em { font-style: italic; }
+.prose strong { font-weight: 600; color: var(--md-on-surface); }
+
+/* 真正的"高亮"交给 mark 标签 */
+.prose mark {
+  background: var(--md-primary-container);
+  color: var(--md-on-primary-container);
+  border-radius: var(--shape-xs);
+  padding: .05em .3em;
+}
+
+.prose del { color: var(--md-on-surface-variant); }
+
+.prose blockquote {
+  margin: 1.25rem 0;
+  padding: .75rem 1.25rem;
+  border-left: 3px solid var(--md-primary);
+  border-radius: 0;
+  background: var(--md-surface-container-low);
+  color: var(--md-on-surface-variant);
+}
+.prose blockquote p:last-child { margin-bottom: 0; }
+
+.prose code {
+  font-family: var(--font-mono);
+  font-size: .875em;
+  background: var(--md-surface-container);
+  border-radius: var(--shape-xs);
+  padding: .15em .4em;
+}
+
+.prose pre {
+  overflow-x: auto;
+  padding: 1rem 1.25rem;
+  margin: 1.25rem 0;
+  background: var(--md-surface-container);
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--shape-md);
+  line-height: 1.6;
+}
+.prose pre code { background: none; padding: 0; font-size: .875rem; }
+
+/* highlight.js 表格式代码块（Hexo 默认输出）适配 */
+.prose figure.highlight {
+  margin: 1.25rem 0;
+  background: var(--md-surface-container);
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--shape-md);
+  overflow-x: auto;
+}
+.prose figure.highlight table { margin: 0; border: none; }
+.prose figure.highlight td { border: none; padding: 0; }
+.prose figure.highlight pre { margin: 0; border: none; background: none; }
+.prose figure.highlight .gutter pre {
+  padding: 1rem .75rem;
+  color: var(--md-outline);
+  text-align: right;
+  user-select: none;
+}
+.prose figure.highlight .code pre { padding: 1rem 1.25rem 1rem .5rem; }
+
+.prose table {
+  width: 100%;
+  margin: 1.25rem 0;
+  border-collapse: collapse;
+  font-size: .9375rem;
+}
+.prose th, .prose td {
+  padding: .5rem .875rem;
+  border: 1px solid var(--md-outline-variant);
+  text-align: left;
+}
+.prose th { background: var(--md-surface-container-low); font-weight: 500; }
+
+.prose hr {
+  border: none;
+  border-top: 1px solid var(--md-outline-variant);
+  margin: 2rem 0;
+}
+
+.prose ul, .prose ol { margin: 0 0 1rem; padding-left: 1.5rem; }
+.prose li { margin: .25rem 0; }
+
+.prose input[type="checkbox"] { accent-color: var(--md-primary); }
+
+@media (max-width: 640px) {
+  :root { font-size: 15px; }
+}
+
+/* ============================================================
+   中文排版微调（渐进增强：不支持的浏览器自动忽略，零风险）
+   ============================================================ */
+
+/* 标题不出现孤字换行，段落收尾更均衡 */
+h1, h2, h3, .post-card h2, .hero h1 { text-wrap: balance; }
+.prose p, .prose blockquote { text-wrap: pretty; }
+
+/* 中西文之间自动加微空隙、全角标点排布优化 */
+.prose {
+  text-autospace: normal;
+  text-spacing-trim: space-all;
+}
+
+/* 段落两端对齐的克制版：只对正文启用按词断行 */
+.prose p { line-break: strict; }
+
+/* 行首行尾标点悬挂（目前 Safari 支持，其他浏览器忽略） */
+.prose { hanging-punctuation: first allow-end; }
