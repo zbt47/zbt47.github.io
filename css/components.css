@@ -58,6 +58,14 @@
 .menu-toggle { display: none; }
 @media (max-width: 640px) {
   .menu-toggle { display: inline-flex; }
+  /* 抽屉脱离了顶栏 flex 流，改由标题撑开中间，图标保持右对齐 */
+  .top-bar .site-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   .top-nav {
     position: fixed;
     inset: var(--header-height) 0 auto 0;
