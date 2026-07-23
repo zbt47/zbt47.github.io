@@ -96,16 +96,26 @@
     padding: .5rem;
     background: var(--md-surface-container-low);
     border-bottom: 1px solid var(--md-outline-variant);
-    /* 收起时必须整体移出视口：自身高度 + 顶栏高度（-120% 只按自身高度算，会漏出尾巴） */
-    transform: translateY(calc(-100% - var(--header-height)));
-    visibility: hidden;   /* 动画结束后彻底不可见、不可点（双保险） */
-    transition: transform var(--dur-medium) var(--ease-emphasized),
-                visibility 0s linear var(--dur-medium);
+    /* 面板本身从头到尾都钉在顶栏正下方（inset 的 top 就是顶栏高度），
+       从不挪动、也从不离开这个位置——展开/收起靠下面的 clip-path 控制
+       "露出多少"，而不是靠 transform 把整块面板挪到别处再挪回来。
+       之前用 translateY 把面板整体挪到视口外面再滑回来，路径必然要
+       经过顶栏所在的那一整行，滑动时会像一块布一样把标题盖过去、
+       "跨过"标题再落位，很不自然；改成原地卷帘之后，面板的可视区域
+       只会在顶栏下方这一块地方由 0 长到完整高度，永远碰不到标题那一行。
+       inset(0 0 100% 0) = 从底边往上裁掉 100%，即完全不可见 */
+    clip-path: inset(0 0 100% 0);
+    visibility: hidden;   /* 动画结束后彻底不可见、不可点（双保险，clip-path 只管视觉） */
+    /* 收起比展开更快、更干脆——与本文件里搜索弹层/灯箱的进出场约定同一条原则
+       （见 .search-overlay.closing / .lightbox.closing 注释）：退场用短时长，
+       不与展开共用同一条"减速停住"的节奏，否则收起时会有一段不该有的拖沓感 */
+    transition: clip-path var(--dur-short) var(--ease-emphasized),
+                visibility 0s linear var(--dur-short);
   }
   .top-nav.open {
-    transform: translateY(0);
+    clip-path: inset(0 0 0% 0);   /* 底边裁切归零，完整露出 */
     visibility: visible;
-    transition: transform var(--dur-medium) var(--ease-emphasized);
+    transition: clip-path var(--dur-medium) var(--ease-emphasized);
   }
   /* 菜单展开时顶栏落底色，与抽屉连为一体 */
   .top-bar.menu-open {
