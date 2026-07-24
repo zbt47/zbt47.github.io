@@ -28,6 +28,7 @@
 .top-bar .site-title:hover { text-decoration: none; color: var(--md-primary); }
 
 .top-nav { display: flex; gap: .25rem; flex: 1; }
+.top-nav-clip { display: contents; } /* 桌面端：这层包裹容器完全不参与布局，.top-nav 照常是 .top-bar 的 flex 子项 */
 .top-nav a {
   font: var(--type-label);
   color: var(--md-on-surface-variant);
@@ -89,33 +90,44 @@
   /* 顶栏落底色是"开菜单"这个动作的一部分，要跟抽屉滑入同一个节奏，
      不能沿用顶栏自己滚动感知时用的 --dur-short，否则颜色先到、抽屉还在滑 */
   .top-bar { transition: background var(--dur-medium) var(--ease-emphasized), border-color var(--dur-medium) var(--ease-emphasized); }
-  .top-nav {
+  /* 静态的裁切容器：只负责"绝不允许任何内容露出到顶栏这条线以上"，
+     自己不参与任何动画，所以不产生逐帧重绘的开销。
+     真正的开合动画交给里面的 .top-nav 用 transform 来做——
+     GPU 合成器属性，纯粹挪动一张已经画好的位图，不需要每帧重新
+     栅格化文字，这也是它比上一版 clip-path 动画顺滑的根本原因：
+     clip-path 每次改变可见范围，都要求浏览器重新裁切、重新栅格化
+     文字边缘，在中低端安卓机上这个开销就是掉帧的来源。
+     两者分工之后："跨过标题"和"顺滑度"这两个问题不用二选一：
+     不管 .top-nav 用 translateY 把自己挪到多高，只要挪出了
+     .top-nav-clip 这个静态盒子的范围，overflow:hidden 就直接
+     把它裁没了，用不着再靠"自身高度+顶栏高度"那种脆弱的百分比换算。 */
+  .top-nav-clip {
+    display: block;
     position: fixed;
     inset: var(--header-height) 0 auto 0;
+    max-height: calc(100vh - var(--header-height));
+    overflow: hidden;
+    pointer-events: none;   /* 收起时整层不可点，展开时由内部 .top-nav 接管 */
+  }
+  .top-nav {
+    position: relative;     /* 定位交给外层 wrapper，自己回到普通文档流 */
     flex-direction: column;
     padding: .5rem;
     background: var(--md-surface-container-low);
     border-bottom: 1px solid var(--md-outline-variant);
-    /* 面板本身从头到尾都钉在顶栏正下方（inset 的 top 就是顶栏高度），
-       从不挪动、也从不离开这个位置——展开/收起靠下面的 clip-path 控制
-       "露出多少"，而不是靠 transform 把整块面板挪到别处再挪回来。
-       之前用 translateY 把面板整体挪到视口外面再滑回来，路径必然要
-       经过顶栏所在的那一整行，滑动时会像一块布一样把标题盖过去、
-       "跨过"标题再落位，很不自然；改成原地卷帘之后，面板的可视区域
-       只会在顶栏下方这一块地方由 0 长到完整高度，永远碰不到标题那一行。
-       inset(0 0 100% 0) = 从底边往上裁掉 100%，即完全不可见 */
-    clip-path: inset(0 0 100% 0);
-    visibility: hidden;   /* 动画结束后彻底不可见、不可点（双保险，clip-path 只管视觉） */
+    transform: translateY(-100%);
+    visibility: hidden;   /* 动画结束后彻底不可见、不可点（双保险） */
+    pointer-events: auto;
     /* 收起比展开更快、更干脆——与本文件里搜索弹层/灯箱的进出场约定同一条原则
        （见 .search-overlay.closing / .lightbox.closing 注释）：退场用短时长，
        不与展开共用同一条"减速停住"的节奏，否则收起时会有一段不该有的拖沓感 */
-    transition: clip-path var(--dur-short) var(--ease-emphasized),
+    transition: transform var(--dur-short) var(--ease-emphasized),
                 visibility 0s linear var(--dur-short);
   }
   .top-nav.open {
-    clip-path: inset(0 0 0% 0);   /* 底边裁切归零，完整露出 */
+    transform: translateY(0);
     visibility: visible;
-    transition: clip-path var(--dur-medium) var(--ease-emphasized);
+    transition: transform var(--dur-medium) var(--ease-emphasized);
   }
   /* 菜单展开时顶栏落底色，与抽屉连为一体 */
   .top-bar.menu-open {
