@@ -114,7 +114,22 @@
     flex-direction: column;
     padding: .5rem;
     background: var(--md-surface-container-low);
-    border-bottom: 1px solid var(--md-outline-variant);
+    /* 阴影已经是分层的（见 tokens.css 里 --elevation-float 的注释：
+       近层给贴合感、远层给漂浮感），不需要再叠一条硬边框去强调边界——
+       实线是"一刀切"的硬边，会把阴影本来柔和的层次感拉回"这是个矩形"
+       的生硬观感，两者是互相打架的，去掉边框让阴影自己收尾就够了 */
+    /* 只圆下面两个角：顶边紧贴顶栏底边，保持直角才能严丝合缝，
+       四个角都圆的话顶边两侧会露出两个小三角缝隙。下面两角配的是
+       --shape-lg，和文章卡片/目录面板/作者卡这些同为
+       surface-container-low 背景的"面板级"表面统一，不是新加的规则，
+       是把这里漏配的令牌补上 */
+    border-radius: 0 0 var(--shape-lg) var(--shape-lg);
+    /* 阴影和遮罩本来想解决的是同一件事——"让抽屉从背景里跳出来"——
+       但遮罩已经把这活干了：菜单展开时背后内容整体压暗一档，抽屉和
+       背景的对比度已经足够，圆角本身也读得出来了。这时候阴影（颜色
+       同样是深色系的 --shadow-tint）叠上去，不会再带来额外的浮起感，
+       反而会在圆角这一圈局部把颜色描重，看起来像给边缘加了道重影，
+       所以交给遮罩一个人做这件事，阴影就不需要了 */
     transform: translateY(-100%);
     visibility: hidden;   /* 动画结束后彻底不可见、不可点（双保险） */
     pointer-events: auto;
@@ -133,6 +148,30 @@
   .top-bar.menu-open {
     background: var(--md-surface-container-low);
     border-bottom-color: transparent;
+  }
+
+  /* 遮罩层：浅色模式下 --md-surface 和 --md-surface-container-low
+     这两个色号本来就调得很接近（是同一套色阶里的克制差异，不是缺陷），
+     贴在一起时单靠阴影很难让人一眼看出"这是块浮起来的面板"——圆角在这种
+     低对比度下反而会显得莫名其妙，像是裁切出了个缺口而不是有意为之的造型。
+     用和搜索弹层同一个 --md-scrim 令牌把抽屉后面的内容压暗一档，对比度
+     一下就出来了，圆角和阴影也就自然读得出来了，不用为了这一处单独
+     把阴影调得比全站其它地方都重。展开慢、收起快，同样是那条已经在
+     用的进出场节奏，点遮罩本身也能收起菜单（沿用了原有的"点击外部关闭"逻辑，
+     因为这层遮罩故意放在 .top-bar 外面，不是它的子元素） */
+  .nav-scrim {
+    position: fixed;
+    inset: var(--header-height) 0 0 0;
+    background: var(--md-scrim);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 18;
+    transition: opacity var(--dur-short) var(--ease-emphasized);
+  }
+  .top-bar.menu-open + .nav-scrim {
+    opacity: 1;
+    pointer-events: auto;
+    transition: opacity var(--dur-medium) var(--ease-emphasized);
   }
 }
 
