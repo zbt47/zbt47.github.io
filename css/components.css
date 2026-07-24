@@ -1176,8 +1176,17 @@ a.chip:hover { text-decoration: none; }
 .copy-mail.done { color: var(--md-on-surface-variant); text-decoration: none; }
 
 
-/* 主题切换视图过渡期间禁用组件级渐变，避免双重动画卡顿 */
-.vt-lock, .vt-lock *, .vt-lock *::before, .vt-lock *::after { transition: none !important; }
+/* 主题切换视图过渡期间禁用组件级渐变，避免双重动画卡顿。
+   ::view-transition-new(root) 展开时对应的是新状态的"实时渲染"而不是一张
+   静止截图（浏览器要逐帧重绘真实页面 + 合成圆形裁切），这时候页面上如果
+   还有别的东西在无限循环动画（比如像素螃蟹的待机浮动），就是在这本就不轻松
+   的逐帧重绘上又叠一份负担，两边抢主线程，圆形扩散就容易显得不够丝滑。
+   用 animation-play-state 而不是 animation:none，是为了让动画原地暂停、
+   解锁后接着播，不会因为重置动画状态而让螃蟹"跳"一下 */
+.vt-lock, .vt-lock *, .vt-lock *::before, .vt-lock *::after {
+  transition: none !important;
+  animation-play-state: paused !important;
+}
 
 /* --------- 次第浮现（motion choreography） --------- */
 /* 隐藏状态由 CSS 在首帧前生效，JS 只负责揭示，杜绝"先显后藏"的闪跳 */
