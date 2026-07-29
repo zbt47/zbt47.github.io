@@ -60,6 +60,78 @@ var HERO_QUOTES = [
   });
 })();
 
+/* ============================================================
+   公共：带退场动画的隐藏
+   搜索弹层、灯箱、螃蟹气泡都是"出现有动画、消失一刀两断"，本来各写
+   各的容易变成三个碰巧长得像的实现。统一在这里：加 .closing → 等动画
+   结束 → 真正隐藏并收尾；同时带兜底定时器，系统关掉动效或 animationend
+   因故没触发时也一定关得掉。
+   watch 传谁的 animationend 算数（通常是里面那个真正在动的面板/图片），
+   不传就监听元素自己。
+   ============================================================ */
+function exitThenHide(el, opts) {
+  opts = opts || {};
+  if (el.hidden || el.dataset.closing === "1") return;
+  el.dataset.closing = "1";
+  el.classList.add("closing");
+
+  var watch = opts.watch || el;
+  var timer = 0;
+
+  function done() {
+    clearTimeout(timer);
+    watch.removeEventListener("animationend", onEnd);
+    el.classList.remove("closing");
+    el.hidden = true;
+    delete el.dataset.closing;
+    if (opts.after) opts.after();
+  }
+  function onEnd(ev) {
+    if (ev.target !== watch) return;   /* 只认它自己的动画，不认内部冒泡上来的 */
+    done();
+  }
+
+  watch.addEventListener("animationend", onEnd);
+  timer = setTimeout(done, opts.fallback || 260);
+}
+
+/* ============================================================
+   公共：复制到剪贴板
+   navigator.clipboard 只在安全上下文（https / localhost）存在。用
+   hexo server 通过 http://局域网IP 在手机上预览时它是 undefined，
+   原先三处直接 .then() 会抛未捕获异常、且用户看不到任何反馈。
+   这里统一兜底：优先用异步 API，不可用时退回 execCommand，
+   并把成败通过回调交出去，由调用方决定怎么提示。
+   ============================================================ */
+function copyText(text, onDone) {
+  function ok() { if (onDone) onDone(true); }
+  function fail() { if (onDone) onDone(false); }
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(ok, fallback);
+  } else {
+    fallback();
+  }
+  function fallback() {
+    try {
+      var ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.cssText = "position:fixed;top:-9999px;opacity:0";
+      document.body.appendChild(ta);
+      ta.select();
+      var done = document.execCommand("copy");
+      document.body.removeChild(ta);
+      done ? ok() : fail();
+    } catch (e) { fail(); }
+  }
+}
+
+/* 重新打开时取消尚未走完的退场，避免残留 .closing 把新的入场动画压掉 */
+function cancelExit(el) {
+  el.classList.remove("closing");
+  delete el.dataset.closing;
+}
+
 (function () {
   "use strict";
 
@@ -68,11 +140,6 @@ var HERO_QUOTES = [
 
   function applyTheme(mode) {
     root.setAttribute("data-theme", mode);
-    var btn = document.getElementById("theme-toggle");
-    if (btn) {
-      btn.querySelector(".i-moon").style.display = mode === "dark" ? "none" : "";
-      btn.querySelector(".i-sun").style.display = mode === "dark" ? "" : "none";
-    }
   }
 
   function currentPref() {
@@ -141,7 +208,11 @@ var HERO_QUOTES = [
         requestAnimationFrame(function () {
           var h = document.documentElement;
           var max = h.scrollHeight - h.clientHeight;
-          bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + "%";
+          /* 用 scaleX 而不是改 width：width 每帧都要重新布局，而进度条
+             是全站跑得最频繁的一段动画（每篇文章的每一次滚动）。
+             缩放走合成器，滚动时主线程一帧布局都不用做 */
+          var p = max > 0 ? h.scrollTop / max : 0;
+          bar.style.transform = "scaleX(" + p + ")";
           ticking = false;
         });
       }, { passive: true });
@@ -166,14 +237,39 @@ var HERO_QUOTES = [
           links.push(a);
         });
 
-        function activate(id) {
-          links.forEach(function (l) { l.classList.toggle("active", l.getAttribute("href") === "#" + id); });
+        /* 滑动指示条：只挪一个物理对象的 transform，不逐项切换背景。
+           但"挪动的轨迹"只在滚动经过途中各项时才讲得通——点击是瞬移，
+           用户没有真的看着它划过中间那些无关的项，所以点击必须瞬间归位，
+           不能假装一次没发生过的"滑过"。 */
+        var indicator = document.createElement("span");
+        indicator.className = "toc-indicator";
+        tocPanel.appendChild(indicator);
+
+        var hasPositioned = false;
+        function activate(id, instant) {
+          var target = null;
+          links.forEach(function (l) {
+            var isActive = l.getAttribute("href") === "#" + id;
+            l.classList.toggle("active", isActive);
+            if (isActive) target = l;
+          });
+          if (!target) return;
+          var skipTravel = instant || !hasPositioned;  /* 首次出现同样不该有"从哪里飞过来"的轨迹 */
+          if (skipTravel) tocPanel.classList.add("toc-no-anim");
+          indicator.style.height = target.offsetHeight + "px";
+          indicator.style.transform = "translateY(" + target.offsetTop + "px)";
+          indicator.style.opacity = "1";
+          if (skipTravel) {
+            void indicator.offsetWidth;  /* 强制回流，让下一次变化能重新用回动画 */
+            tocPanel.classList.remove("toc-no-anim");
+          }
+          hasPositioned = true;
         }
         var clickLock = 0;
         tocPanel.addEventListener("click", function (e) {
           var a = e.target.closest("a");
           if (!a) return;
-          activate(a.getAttribute("href").slice(1));
+          activate(a.getAttribute("href").slice(1), true);
           clickLock = Date.now() + 800;  /* 跳转后短暂锁定，避免滚动判定抢走高亮 */
         });
         var io = new IntersectionObserver(function (entries) {
@@ -201,12 +297,32 @@ var HERO_QUOTES = [
     var resultBox = document.getElementById("search-results");
     var index = null;
 
-    function open() {
+    var lastFocused = null;
+
+    function open(e) {
+      cancelExit(overlay);
+      /* 记住是谁打开的，关闭后把焦点还回去——否则焦点掉回 body，
+         键盘用户关掉弹层后要从页面最顶上重新 Tab 一遍 */
+      lastFocused = document.activeElement;
       overlay.hidden = false;
       document.body.style.overflow = "hidden";   /* 弹层打开时锁定背景滚动 */
+      /* 展开原点对准触发它的按钮——横竖两轴都对准，弹层才是真的
+         "从那个按钮长出来"，只对准横轴的话它仍然是从自己顶边展开的 */
+      var trigger = (e && e.currentTarget) || openBtn;
+      var panel = overlay.querySelector(".search-panel");
+      if (panel && trigger) {
+        var tRect = trigger.getBoundingClientRect();
+        var pRect = panel.getBoundingClientRect();
+        panel.style.transformOrigin =
+          (tRect.left + tRect.width / 2 - pRect.left) + "px " +
+          (tRect.top + tRect.height / 2 - pRect.top) + "px";
+      }
       input.focus();
       if (!index) {
-        fetch("/search.json").then(function (r) { return r.json(); })
+        /* 路径由模板经 url_for 注入到 body[data-search]，不再硬编码 "/"。
+           站点若部署在子路径（项目站）下，硬编码的根路径会 404。 */
+        var idxUrl = document.body.dataset.search || "/search.json";
+        fetch(idxUrl).then(function (r) { return r.json(); })
           .then(function (d) {
             index = Array.isArray(d) ? d : [];
             /* 索引就位后，如果用户已经输入了内容，立即补跑一次过滤 */
@@ -217,11 +333,20 @@ var HERO_QUOTES = [
           });
       }
     }
+
     function close() {
-      overlay.hidden = true;
-      document.body.style.overflow = "";
-      input.value = "";
-      resultBox.innerHTML = "";
+      /* 输入内容与结果留到退场结束后再清，否则会看到"文字先消失、
+         容器再收起"，一个动作被拆成了两段 */
+      exitThenHide(overlay, {
+        watch: overlay.querySelector(".search-panel"),
+        after: function () {
+          document.body.style.overflow = "";
+          input.value = "";
+          resultBox.innerHTML = "";
+          if (lastFocused && lastFocused.focus) lastFocused.focus();
+          lastFocused = null;
+        }
+      });
     }
 
     openBtn.addEventListener("click", open);
@@ -230,6 +355,20 @@ var HERO_QUOTES = [
     if (e404Btn) e404Btn.addEventListener("click", open);
     document.getElementById("search-close").addEventListener("click", close);
     overlay.addEventListener("click", function (e) { if (e.target === overlay) close(); });
+    /* 焦点陷阱：aria-modal 只是告诉辅助技术"背后不可达"，键盘 Tab 并不会
+       自己被挡住，得手动把焦点圈在弹层内部。
+       ★ 选择器必须带上 a[href]：搜索结果是动态插入的 <a>，漏掉它的话
+       last 会落在关闭按钮上，Tab 直接跳回输入框——搜索结果反而变得
+       键盘不可达，比不做陷阱更糟。每次改弹层内部结构都回来确认一遍。 */
+    overlay.addEventListener("keydown", function (e) {
+      if (e.key !== "Tab") return;
+      var f = overlay.querySelectorAll("a[href], input, button");
+      if (!f.length) return;
+      var first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    });
+
     document.addEventListener("keydown", function (e) {
       if (e.key === "Escape" && !overlay.hidden) close();
       if (e.key === "/" && overlay.hidden && !/INPUT|TEXTAREA/.test(document.activeElement.tagName)) {
@@ -306,9 +445,9 @@ var HERO_QUOTES = [
       btn.textContent = "复制";
       btn.addEventListener("click", function () {
         var code = block.querySelector(".code") || block;
-        navigator.clipboard.writeText(code.innerText.replace(/\n+$/, "\n")).then(function () {
-          btn.textContent = "已复制";
-          btn.classList.add("done");
+        copyText(code.innerText.replace(/\n+$/, "\n"), function (ok) {
+          btn.textContent = ok ? "已复制" : "复制失败";
+          btn.classList.toggle("done", ok);
           setTimeout(function () { btn.textContent = "复制"; btn.classList.remove("done"); }, 1600);
         });
       });
@@ -325,9 +464,11 @@ var HERO_QUOTES = [
       a.addEventListener("click", function (e) {
         e.preventDefault();
         history.replaceState(null, "", "#" + h.id);
-        navigator.clipboard.writeText(location.href);
-        a.classList.add("done");
-        setTimeout(function () { a.classList.remove("done"); }, 1200);
+        copyText(location.href, function (ok) {
+          if (!ok) return;
+          a.classList.add("done");
+          setTimeout(function () { a.classList.remove("done"); }, 1200);
+        });
       });
       h.appendChild(a);
     });
@@ -384,17 +525,18 @@ var HERO_QUOTES = [
       lastIdx = i;
       bubble.textContent = lines[i][0];
       setFace(lines[i][1]);
+      cancelExit(bubble);
       bubble.hidden = false;
       clearTimeout(timer);
       timer = setTimeout(function () {
-        bubble.hidden = true;
-        setFace("normal");
+        exitThenHide(bubble, { after: function () { setFace("normal"); } });
       }, 2600);
     });
 
     crab.addEventListener("dblclick", function () {
       bubble.textContent = "溜了溜了！";
       setFace("wow");
+      cancelExit(bubble);
       bubble.hidden = false;
       crab.classList.add("runaway");
       sessionStorage.setItem("crab-away", "1");
@@ -436,22 +578,41 @@ var HERO_QUOTES = [
     function visibleItems() {
       return [].slice.call(wall.querySelectorAll(".photo-item:not(.filtered-out)"));
     }
-    function show(i) {
+    function show(i, dir) {
       var items = visibleItems();
       if (!items.length) return;
       current = (i + items.length) % items.length;
       var img = items[current].querySelector("img");
+      /* 先把已经在缓存里的缩略图顶上，避免大图下载期间灯箱一片空白；
+         大图预载完成后再换掉。dataset.want 是防串台的标记：连点上/下一张时，
+         先发出的请求可能后到达，没有它就会出现"停在第 3 张、显示第 2 张"。 */
       lbImg.src = img.src;
+      var large = img.dataset.large;
+      lbImg.dataset.want = large || img.src;
+      if (large && large !== img.src) {
+        var pre = new Image();
+        pre.onload = function () {
+          if (lbImg.dataset.want === large) lbImg.src = large;
+        };
+        pre.src = large;
+      }
       lbImg.alt = img.alt;
       lbTitle.textContent = img.dataset.title;
       lbMeta.textContent = img.dataset.meta;
       lbCounter.textContent = (current + 1) + " / " + items.length;
+      cancelExit(lb);
       lb.hidden = false;
       document.body.style.overflow = "hidden";
+      /* 按切换方向选动画类；强制回流让同名 animation 能连续重放 */
+      lbImg.classList.remove("lb-in", "lb-in-next", "lb-in-prev");
+      void lbImg.offsetWidth;
+      lbImg.classList.add(dir === 1 ? "lb-in-next" : dir === -1 ? "lb-in-prev" : "lb-in");
     }
     function close() {
-      lb.hidden = true;
-      document.body.style.overflow = "";
+      exitThenHide(lb, {
+        watch: lb.querySelector(".lb-stage"),
+        after: function () { document.body.style.overflow = ""; }
+      });
     }
 
     wall.addEventListener("click", function (e) {
@@ -460,14 +621,14 @@ var HERO_QUOTES = [
       show(visibleItems().indexOf(item));
     });
     document.getElementById("lb-close").addEventListener("click", close);
-    document.getElementById("lb-prev").addEventListener("click", function () { show(current - 1); });
-    document.getElementById("lb-next").addEventListener("click", function () { show(current + 1); });
+    document.getElementById("lb-prev").addEventListener("click", function () { show(current - 1, -1); });
+    document.getElementById("lb-next").addEventListener("click", function () { show(current + 1, 1); });
     lb.addEventListener("click", function (e) { if (e.target === lb) close(); });
     document.addEventListener("keydown", function (e) {
       if (lb.hidden) return;
       if (e.key === "Escape") close();
-      if (e.key === "ArrowLeft") show(current - 1);
-      if (e.key === "ArrowRight") show(current + 1);
+      if (e.key === "ArrowLeft") show(current - 1, -1);
+      if (e.key === "ArrowRight") show(current + 1, 1);
     });
 
     /* 触屏左右滑动切换 */
@@ -476,7 +637,7 @@ var HERO_QUOTES = [
     lb.addEventListener("touchend", function (e) {
       if (touchX === null) return;
       var dx = e.changedTouches[0].clientX - touchX;
-      if (Math.abs(dx) > 50) show(current + (dx < 0 ? 1 : -1));
+      if (Math.abs(dx) > 50) show(current + (dx < 0 ? 1 : -1), dx < 0 ? 1 : -1);
       touchX = null;
     }, { passive: true });
   });
@@ -516,9 +677,9 @@ var HERO_QUOTES = [
       var original = btn.innerHTML;
       var timer = null;
       btn.addEventListener("click", function () {
-        navigator.clipboard.writeText(btn.dataset.copy).then(function () {
-          btn.innerHTML = "已复制 ✓";
-          btn.classList.add("done");
+        copyText(btn.dataset.copy, function (ok) {
+          btn.innerHTML = ok ? "已复制 ✓" : "复制失败，请手动选取";
+          btn.classList.toggle("done", ok);
           clearTimeout(timer);
           timer = setTimeout(function () {
             btn.innerHTML = original;

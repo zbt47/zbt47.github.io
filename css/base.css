@@ -5,6 +5,12 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
+/* 永久预留滚动条的宽度。搜索弹层与灯箱打开时会给 body 设 overflow:hidden
+   锁定背景滚动，滚动条随之消失、视口凭空变宽 10px，居中的 .container 会
+   整体右移 5px，固定定位的顶栏也跟着弹一下——就是"打开搜索时整个画面抖
+   一下"的来源。预留之后滚动条的出现与消失不再改变可用宽度。 */
+html { scrollbar-gutter: stable; }
+
 body {
   margin: 0;
   font: var(--type-body);
@@ -26,15 +32,22 @@ img { max-width: 100%; height: auto; border-radius: var(--shape-md); }
 
 ::selection { background: var(--md-primary-container); color: var(--md-on-primary-container); }
 
+/* 滚动条：静止时用边框两档里**浅**的那一档。原先用 --md-outline（深的那档）
+   ——那个角色是给"需要被看清的分隔线"准备的，用在滚动条上过重，一条灰杠
+   杵在页面右缘很抢眼。滚动条属于辅助控件，静止时该退到背景里，
+   真正去拖它的时候（hover）再浮出来。 */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb {
-  background: var(--md-outline);
+  background: var(--md-outline-variant);
   border-radius: var(--shape-full);
   border: 2px solid var(--md-surface);
 }
-::-webkit-scrollbar-thumb:hover { background: var(--md-on-surface-variant); }
+::-webkit-scrollbar-thumb:hover { background: var(--md-outline); }
 
 /* --------- Markdown 正文（.prose） --------- */
+
+/* 长网址/长英文单词/表格里的长内容的破版兜底，宁可断词也不能撑破容器 */
+.prose { overflow-wrap: break-word; }
 
 .prose h1 { font: var(--type-headline); margin: 2rem 0 .75rem; }
 .prose h2 {
@@ -43,8 +56,12 @@ img { max-width: 100%; height: auto; border-radius: var(--shape-md); }
   padding-bottom: .4rem;
   border-bottom: 1px solid var(--md-outline-variant);
 }
-.prose h3 { font: var(--type-label); font-size: 1.1rem; margin: 1.5rem 0 .5rem; }
-.prose h4, .prose h5, .prose h6 { font: var(--type-label); margin: 1.25rem 0 .5rem; }
+/* 三级以下标题走 --type-title 再覆写字号（与 .author-card h4、
+   .post-card.featured h2 同一种写法），不借用 --type-label——那是给
+   导航/按钮/chip 这类控件用的角色。顺带修掉 h4~h6 曾经比正文还小
+   （.875rem < 1rem）的倒挂：标题不该小于它所统领的文字。 */
+.prose h3 { font: var(--type-title); font-size: 1.125rem; margin: 1.5rem 0 .5rem; }
+.prose h4, .prose h5, .prose h6 { font: var(--type-title); font-size: 1rem; margin: 1.25rem 0 .5rem; }
 
 .prose p { margin: 0 0 1rem; }
 
@@ -104,7 +121,7 @@ img { max-width: 100%; height: auto; border-radius: var(--shape-md); }
 .prose figure.highlight pre { margin: 0; border: none; background: none; }
 .prose figure.highlight .gutter pre {
   padding: 1rem .75rem;
-  color: var(--md-outline);
+  color: var(--md-on-surface-variant);
   text-align: right;
   user-select: none;
 }

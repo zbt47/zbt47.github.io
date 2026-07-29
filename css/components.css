@@ -33,13 +33,10 @@
   color: var(--md-on-surface-variant);
   padding: .5rem .875rem;
   border-radius: var(--shape-full);
-  transition: background var(--dur-short), color var(--dur-short);
+  transition: color var(--dur-short);
 }
-.top-nav a:hover {
-  text-decoration: none;
-  background: var(--md-surface-container-high);
-  color: var(--md-on-surface);
-}
+/* hover 的底色反馈交给统一状态层，这里只管文字提亮 */
+.top-nav a:hover { text-decoration: none; color: var(--md-on-surface); }
 .top-nav a.active { background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
 
 .icon-btn {
@@ -49,10 +46,33 @@
   border-radius: var(--shape-full);
   background: transparent;
   color: var(--md-on-surface-variant);
-  transition: background var(--dur-short);
 }
-.icon-btn:hover { background: var(--md-surface-container-high); }
 .icon-btn svg { width: 22px; height: 22px; fill: currentColor; }
+
+/* 深浅色切换图标：不再是 display 硬切，改成自然的交叠过渡——
+   一个转出去，一个转进来，动作本身连续，而不是瞬间跳变 */
+#theme-toggle { position: relative; }
+#theme-toggle svg {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 22px; height: 22px;
+  transform: translate(-50%, -50%) rotate(0deg) scale(1);
+  opacity: 1;
+  transition: opacity var(--dur-medium) var(--ease-emphasized),
+              transform var(--dur-medium) var(--ease-emphasized);
+}
+#theme-toggle .i-sun {
+  opacity: 0;
+  transform: translate(-50%, -50%) rotate(-90deg) scale(.6);
+}
+[data-theme="dark"] #theme-toggle .i-moon {
+  opacity: 0;
+  transform: translate(-50%, -50%) rotate(90deg) scale(.6);
+}
+[data-theme="dark"] #theme-toggle .i-sun {
+  opacity: 1;
+  transform: translate(-50%, -50%) rotate(0deg) scale(1);
+}
 
 /* 移动端抽屉菜单 */
 .menu-toggle { display: none; }
@@ -66,6 +86,9 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  /* 顶栏落底色是"开菜单"这个动作的一部分，要跟抽屉滑入同一个节奏，
+     不能沿用顶栏自己滚动感知时用的 --dur-short，否则颜色先到、抽屉还在滑 */
+  .top-bar { transition: background var(--dur-medium) var(--ease-emphasized), border-color var(--dur-medium) var(--ease-emphasized); }
   .top-nav {
     position: fixed;
     inset: var(--header-height) 0 auto 0;
@@ -96,7 +119,9 @@
   position: fixed;
   top: 0; left: 0;
   height: 3px;
-  width: 0;
+  width: 100%;
+  transform: scaleX(0);
+  transform-origin: 0 50%;   /* 从左端长出来 */
   z-index: 30;
   background: var(--md-primary);
   border-radius: 0 var(--shape-xs) var(--shape-xs) 0;
@@ -126,11 +151,10 @@
   padding: 1.5rem 1.75rem;
   margin-bottom: 1.25rem;
   color: inherit;
-  transition: background var(--dur-short), transform var(--dur-short) var(--ease-emphasized);
+  transition: transform var(--dur-short) var(--ease-emphasized);
 }
 .post-card:hover {
   text-decoration: none;
-  background: var(--md-surface-container);
   transform: translateY(-2px);
 }
 .post-card h2 { font: var(--type-title); margin: 0 0 .5rem; color: var(--md-on-surface); }
@@ -144,6 +168,79 @@
   overflow: hidden;
 }
 
+/* --------- 状态层（state layer）：全站可交互组件共用同一套反馈算法，
+   不再各写各的 filter / 换背景色。叠加色取 currentColor，即组件自身的
+   文字色，天然贴合每个组件的语境（填充按钮取 on-primary，卡片取 on-surface，
+   灯箱里的图标按钮取它自己的浅色，无需为深色场景另写一套）。
+
+   ★ 新增可交互组件时，只需把选择器加进下面这一份清单，不要另写 hover 背景。 */
+.btn-tonal,
+a.chip,
+.pagination a,
+.search-results a,
+.icon-btn,
+.top-nav a,
+.post-nav a,
+.filter-chip,
+.archive-list a {
+  position: relative;
+  overflow: hidden;
+}
+/* 卡片与填充按钮另立一条：它们的阴影挂在 ::before 上，会画到边界之外，
+   被 overflow:hidden 裁掉就什么都看不见了，所以只设定位、不设裁剪。
+   状态层 ::after 用的是 inset:0 + border-radius:inherit，本来就不会
+   超出边界，少了这层裁剪也不会从圆角漏出去。 */
+.post-card,
+.btn-filled { position: relative; }
+
+/* 高度的阴影挂在伪元素上、动的是它的 opacity——box-shadow 本身不是
+   合成器加速属性，直接 transition 它会逐帧重绘一整片模糊区域。换成
+   透明度之后观感完全一样，但回到了"只动 opacity/transform/filter"的
+   规矩里，也不再是这套动效里唯一有真实开销的一处。 */
+.post-card::before,
+.btn-filled::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: var(--elevation-hover);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-short) var(--ease-emphasized);
+}
+.post-card:hover::before,
+.btn-filled:hover::before { opacity: 1; }
+
+/* .code-copy 自身已是 absolute、.lightbox .icon-btn 自身已是 fixed，
+   两者都能给状态层当定位参照，不必也不该在这里再设 relative */
+:is(.post-card, .btn-filled, .btn-tonal, a.chip, .pagination a,
+    .search-results a, .icon-btn, .top-nav a, .post-nav a,
+    .filter-chip, .archive-list a, .code-copy)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-short);
+}
+:is(.post-card, .btn-filled, .btn-tonal, a.chip, .pagination a,
+    .search-results a, .icon-btn, .top-nav a, .post-nav a,
+    .filter-chip, .archive-list a, .code-copy):hover::after {
+  opacity: var(--state-hover);
+}
+:is(.post-card, .btn-filled, .btn-tonal, a.chip, .pagination a,
+    .search-results a, .icon-btn, .top-nav a, .post-nav a,
+    .filter-chip, .archive-list a, .code-copy):focus-visible::after {
+  opacity: var(--state-focus);
+}
+:is(.post-card, .btn-filled, .btn-tonal, a.chip, .pagination a,
+    .search-results a, .icon-btn, .top-nav a, .post-nav a,
+    .filter-chip, .archive-list a, .code-copy):active::after {
+  opacity: var(--state-press);
+}
+
 .meta-row {
   display: flex;
   align-items: center;
@@ -152,6 +249,10 @@
   font: var(--type-caption);
   color: var(--md-on-surface-variant);
 }
+/* 日期一律等宽：与归档页的 .archive-list time 同一条约定，
+   同一类数据在全站只有一种排版方式。只挂在 time 上，相邻的
+   "N 分钟阅读"是散文不是数据，保持 sans。 */
+.meta-row time { font-family: var(--font-mono); }
 
 .chip {
   font: var(--type-caption);
@@ -161,7 +262,8 @@
   border-radius: var(--shape-sm);
   padding: .25rem .625rem;
 }
-a.chip:hover { text-decoration: none; filter: brightness(1.05); }
+a.chip { position: relative; overflow: hidden; }
+a.chip:hover { text-decoration: none; }
 
 /* --------- 分页 --------- */
 .pagination {
@@ -171,6 +273,8 @@ a.chip:hover { text-decoration: none; filter: brightness(1.05); }
   margin-top: 2rem;
 }
 .pagination a, .pagination .current {
+  position: relative;
+  overflow: hidden;
   min-width: 40px; height: 40px;
   display: inline-flex; align-items: center; justify-content: center;
   border-radius: var(--shape-full);
@@ -178,7 +282,7 @@ a.chip:hover { text-decoration: none; filter: brightness(1.05); }
   padding: 0 .75rem;
 }
 .pagination a { color: var(--md-on-surface-variant); }
-.pagination a:hover { background: var(--md-surface-container-high); text-decoration: none; }
+.pagination a:hover { text-decoration: none; }
 .pagination .current { background: var(--md-primary); color: var(--md-on-primary); }
 
 /* --------- 404 页 --------- */
@@ -199,6 +303,8 @@ a.chip:hover { text-decoration: none; filter: brightness(1.05); }
 .e404-actions { display: flex; justify-content: center; gap: .75rem; }
 
 .btn-filled, .btn-tonal {
+  position: relative;
+  overflow: hidden;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -208,12 +314,11 @@ a.chip:hover { text-decoration: none; filter: brightness(1.05); }
   cursor: pointer;
   border-radius: var(--shape-full);
   font: var(--type-label);
-  transition: filter var(--dur-short);
 }
 .btn-filled { background: var(--md-primary); color: var(--md-on-primary); }
-.btn-filled:hover { filter: brightness(1.08); text-decoration: none; }
+.btn-filled:hover { text-decoration: none; }
 .btn-tonal { background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
-.btn-tonal:hover { filter: brightness(1.05); }
+.btn-tonal:hover { text-decoration: none; }
 
 /* --------- 模糊剧透（spoiler，Markdown 里写 <span class="spoiler">…</span>） --------- */
 .spoiler {
@@ -228,7 +333,11 @@ a.chip:hover { text-decoration: none; filter: brightness(1.05); }
 
 /* --------- 文章页 --------- */
 .post-header { margin-bottom: 2rem; }
-.post-header h1 { font: var(--type-display); letter-spacing: -.01em; margin: 0 0 .875rem; }
+/* 全站大字号字距曲线（字号越大，视觉上越松，负字距越深）：
+   7rem → -.04em ｜ 4.5rem → -.03em ｜ 2.75rem → -.02em
+   2.25/2rem → -.015em ｜ 1.625rem → -.01em ｜ 1.5rem 以下不收紧。
+   新增大字号标题时按这张表取值，不要凭手感另开一个数。 */
+.post-header h1 { font: var(--type-display); letter-spacing: -.015em; margin: 0 0 .875rem; }
 
 .stale-notice {
   display: flex;
@@ -255,26 +364,33 @@ a.chip:hover { text-decoration: none; filter: brightness(1.05); }
   border-radius: var(--shape-md);
   padding: .875rem 1.125rem;
   font-size: .9375rem;
-  transition: background var(--dur-short);
 }
-.post-nav a:hover { background: var(--md-surface-container); text-decoration: none; }
+.post-nav a:hover { text-decoration: none; }
 .post-nav .dir { display: block; font: var(--type-caption); color: var(--md-on-surface-variant); margin-bottom: .25rem; }
 .post-nav .next { text-align: right; }
 @media (max-width: 640px) { .post-nav { grid-template-columns: 1fr; } }
 
-/* 作者卡片 */
+/* 作者署名：带回容器感（不再用一条孤立的分隔线代替），
+   但比原来的卡片更轻——头像加一圈极淡描边接回卡片的克制色系，
+   名字与文案的字阶差拉开，格言退出联动 */
 .author-card {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 1.125rem;
   background: var(--md-surface-container-low);
   border-radius: var(--shape-lg);
   padding: 1.25rem 1.5rem;
   margin-top: 2rem;
 }
-.author-card img { width: 56px; height: 56px; border-radius: var(--shape-full); }
-.author-card h4 { margin: 0 0 .25rem; font: var(--type-label); font-size: 1rem; }
-.author-card p { margin: 0; font: var(--type-caption); color: var(--md-on-surface-variant); }
+.author-card img {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--shape-full);
+  outline: 2px solid var(--md-outline-variant);
+  outline-offset: 2px;
+}
+.author-card h4 { margin: 0 0 .25rem; font: var(--type-title); font-size: 1.0625rem; }
+.author-card p { margin: 0; font: var(--type-body); font-size: .9375rem; color: var(--md-on-surface-variant); }
 
 /* --------- 目录（TOC） --------- */
 .toc-panel {
@@ -293,7 +409,10 @@ a.chip:hover { text-decoration: none; filter: brightness(1.05); }
   color: var(--md-on-surface-variant);
   padding: 0 .875rem .5rem;
 }
+#toc { position: relative; }
 .toc-panel a {
+  position: relative;
+  z-index: 1;
   display: block;
   font: var(--type-caption);
   color: var(--md-on-surface-variant);
@@ -302,24 +421,76 @@ a.chip:hover { text-decoration: none; filter: brightness(1.05); }
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  transition: background var(--dur-short), color var(--dur-short);
+  /* 与 .toc-indicator 的滑动同步，两者是同一个动作的两个部分，
+     时长/缓动必须一致，否则文字先到、指示条还在路上，会显得"慢一拍" */
+  transition: color var(--dur-medium) var(--ease-emphasized);
 }
-.toc-panel a:hover { text-decoration: none; background: var(--md-surface-container-high); }
-.toc-panel a.active { background: var(--md-primary-container); color: var(--md-on-primary-container); }
+.toc-panel a::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-short);
+}
+.toc-panel a:hover::after { opacity: var(--state-hover); }
+.toc-panel a:focus-visible::after { opacity: var(--state-focus); }
+.toc-panel a:hover { text-decoration: none; }
+.toc-panel a.active { color: var(--md-on-primary-container); }
 .toc-panel a[data-level="3"] { padding-left: 1.75rem; }
+/* 高亮不再是每一项各自切换背景，而是一根随目录滚动的指示条，
+   让"当前在哪"读起来是一个物体在移动，而不是多个格子各自开关 */
+.toc-indicator {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 0;
+  border-radius: var(--shape-full);
+  background: var(--md-primary-container);
+  opacity: 0;
+  z-index: 0;
+  pointer-events: none;
+  transform: translateY(0);
+  transition: transform var(--dur-medium) var(--ease-emphasized), opacity var(--dur-short);
+}
+/* 点击跳转时页面是瞬间到位的（本站未开启平滑滚动），指示条也必须瞬间到位。
+   页面瞬移、指示条却滑 350ms，两者速度对不上，才会看到那道突兀的位移轨迹；
+   而且点击时用户并没有真的看着它划过中间那些无关的项，那道轨迹是假的。
+   滚动阅读时位置才是连续变化的，那时让它连续跟随才讲得通。
+   原则：指示条的速度要和它所跟踪的东西一致。
+   这个类只在瞬移的那一帧生效，随后立刻移除，不影响滚动触发的平滑滑动。 */
+#toc.toc-no-anim .toc-indicator,
+#toc.toc-no-anim a { transition: none !important; }
 @media (max-width: 900px) { .toc-panel { display: none; } }
 
 /* --------- 归档页 --------- */
-.archive-year { font: var(--type-headline); margin: 2rem 0 .75rem; color: var(--md-primary); }
+/* .archive-year 的样式统一写在下方"归档页装饰性年份"一节，此处不再重复定义
+   ——同一个选择器分散在两处、后者只覆盖一半属性，是"改了不知道去哪找"的典型
+   来源。搜 archive-year 只应该搜到那一处。 */
 .archive-list { list-style: none; padding: 0; margin: 0; }
-.archive-list li {
+/* 条目之间的间距。两个作用：一是拉开阅读节奏，二是不让相邻两行的 hover
+   高亮块边缘相接——贴在一起时鼠标往下扫会连成一条滑动的色带，而不是
+   一个个独立的可点目标。
+
+   三档节奏（算上条目自身 10px 内距与 6px 行距开销后的实际留白）：
+     组与组之间（末条目 → 下一个年份）  约 90px   ← 分界，必须最大
+     条目 → 条目                        约 42px
+     年份 → 首个条目                    约 38px   ← 略小，标题才"贴"着它的组
+   改任何一档之前先想一遍这三个数的相对关系，别只盯着单个数值调。 */
+.archive-list li + li { margin-top: .625rem; }
+/* li 只负责浮现动画的挂载点；高亮范围与可点范围必须是同一个元素，
+   所以整行的 flex/padding/圆角都放在 a 上，而不是分裂到 li + a 两层
+   ——历史上高亮跟着 li 走、可点区域只有 a，导致点日期没反应。 */
+.archive-list a {
   display: flex;
   gap: 1rem;
   align-items: baseline;
   padding: .625rem .875rem;
   border-radius: var(--shape-sm);
 }
-.archive-list li:hover { background: var(--md-surface-container-low); }
+.archive-list a:hover { text-decoration: none; }
+/* hover 底色交给统一状态层 */
 .archive-list time {
   font: var(--type-caption);
   font-family: var(--font-mono);
@@ -347,13 +518,39 @@ a.chip:hover { text-decoration: none; filter: brightness(1.05); }
 }
 
 /* --------- 无障碍 & 动效偏好 --------- */
+/* 跳到主内容：键盘用户的第一个可聚焦元素，平时移出视口，聚焦才浮现。
+   用 transform 位移而不是 display:none——后者会让它彻底不可聚焦，
+   等于没做。#main 带 tabindex="-1"，跳过去后焦点真的落在正文上。 */
+.skip-link {
+  position: fixed;
+  top: .5rem;
+  left: .5rem;
+  z-index: 100;
+  padding: .5rem 1rem;
+  border-radius: var(--shape-sm);
+  background: var(--md-primary);
+  color: var(--md-on-primary);
+  font: var(--type-label);
+  transform: translateY(-200%);
+  transition: transform var(--dur-short) var(--ease-emphasized);
+}
+.skip-link:focus { transform: none; text-decoration: none; }
+#main:focus { outline: none; }
+
 :focus-visible {
   outline: 2px solid var(--md-primary);
   outline-offset: 2px;
   border-radius: var(--shape-xs);
 }
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+  /* 延迟也要一起归零：只压时长的话，分阶段动效的 delay 仍会留下
+     "先空一拍再突然出现"的空窗，反而比不做编排更难受 */
+  *, *::before, *::after {
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+    transition-delay: 0s !important;
+    animation-delay: 0s !important;
+  }
 }
 
 /* --------- 搜索弹层 --------- */
@@ -361,26 +558,64 @@ a.chip:hover { text-decoration: none; filter: brightness(1.05); }
   position: fixed;
   inset: 0;
   z-index: 40;
-  background: var(--md-scrim);
   display: flex;
   justify-content: center;
   /* 紧贴顶栏下方弹出，避免盖住首页"你好，我是"一行 */
   padding: calc(var(--header-height) + .75rem) 1rem 0;
 }
 .search-overlay[hidden] { display: none; }
+/* ★ 本区块内所有新规则都刻意不写 display——[hidden] 的 display:none
+   必须始终能压住它们。历史上弹层关不掉就是被 display 覆盖导致的。 */
+
+/* 遮罩挪到伪元素上单独淡入淡出：它和面板是两件事，不该共用一个
+   opacity（否则面板会被遮罩的淡入二次衰减，动作读起来发闷） */
+.search-overlay::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--md-scrim);
+  animation: search-scrim-in var(--dur-medium) var(--ease-emphasized);
+}
+.search-overlay.closing::before {
+  animation: search-scrim-out var(--dur-short) var(--ease-emphasized) forwards;
+}
+@keyframes search-scrim-in  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes search-scrim-out { from { opacity: 1; } to { opacity: 0; } }
+
 .search-panel {
+  /* 定位是为了盖在上面那层绝对定位的遮罩之上 */
+  position: relative;
   width: 100%;
   max-width: 34rem;
   align-self: flex-start;
   background: var(--md-surface-container-high);
   border-radius: var(--shape-xl);
   overflow: hidden;
-  animation: panel-in var(--dur-medium) var(--ease-emphasized);
+  box-shadow: var(--elevation-float);
+  /* transform-origin 由 JS 对准触发按钮的中心（横竖两轴都对准），
+     所以这里只需要缩放——"从那个按钮长出来"的位移由原点自己产生，
+     不必再叠一个 translateY 去假装 */
+  transform-origin: center top;
+  animation: search-panel-in var(--dur-medium) var(--ease-emphasized);
 }
-@keyframes panel-in {
-  from { opacity: 0; transform: translateY(-12px) scale(.98); }
-  to   { opacity: 1; transform: none; }
+/* 退场比入场更快、位移更小：M3 里"收起"是干脆的，不该和"展开"等长 */
+.search-overlay.closing .search-panel {
+  animation: search-panel-out var(--dur-short) var(--ease-emphasized) forwards;
 }
+@keyframes search-panel-in  { from { opacity: 0; transform: scale(.9); }  to { opacity: 1; transform: none; } }
+@keyframes search-panel-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: scale(.94); } }
+
+/* 容器先到位，内容随后落定。一次展开读起来是"容器长出来，内容在里面
+   安顿好"，而不是所有东西同时冒出来——这一步之差就是"变形"和"淡入"
+   的区别。收起时不再单独动，跟着容器一起走，避免"文字先没、壳子后收" */
+.search-field,
+.search-results {
+  animation: search-content-in var(--dur-short) var(--ease-emphasized) 90ms both;
+}
+.search-overlay.closing .search-field,
+.search-overlay.closing .search-results { animation: none; }
+@keyframes search-content-in { from { opacity: 0; } to { opacity: 1; } }
+
 .search-field {
   display: flex;
   align-items: center;
@@ -400,12 +635,14 @@ a.chip:hover { text-decoration: none; filter: brightness(1.05); }
 .search-results { max-height: 55vh; overflow-y: auto; }
 .search-results:not(:empty) { border-top: 1px solid var(--md-outline-variant); padding: .5rem; }
 .search-results a {
+  position: relative;
+  overflow: hidden;
   display: block;
   padding: .75rem 1rem;
   border-radius: var(--shape-md);
   color: var(--md-on-surface);
 }
-.search-results a:hover { background: var(--md-surface-container); text-decoration: none; }
+.search-results a:hover { text-decoration: none; }
 .search-results .r-title { font: var(--type-label); margin-bottom: .2rem; }
 .search-results .r-title mark { background: none; color: var(--md-primary); padding: 0; }
 .search-results .r-snippet {
@@ -442,11 +679,12 @@ a.chip:hover { text-decoration: none; filter: brightness(1.05); }
   color: var(--md-on-surface-variant);
   margin: 0 0 1.25rem;
 }
-/* 格言署名（首页 tagline 与关于页 motto 共用） */
+/* 格言署名（首页 tagline 与关于页 motto 共用）。这是文字，不是描边，
+   之前误用了 outline 这个"边框"角色，改回真正的低强调文字色 */
 .quote-by {
   display: inline-block;
   font: var(--type-caption);
-  color: var(--md-outline);
+  color: var(--md-on-surface-variant);
   margin-left: .625em;
   white-space: nowrap;
 }
@@ -457,7 +695,8 @@ a.chip:hover { text-decoration: none; filter: brightness(1.05); }
 .hero .stats .chip { background: var(--md-surface-container); color: var(--md-on-surface-variant); }
 @media (max-width: 640px) {
   .hero { padding: 2rem 0 1.75rem; }
-  .hero h1 { font-size: 2rem; }
+  /* 字号降档，字距必须跟着回到曲线上——留着 -.02em 会在小字号下挤字 */
+  .hero h1 { font-size: 2rem; letter-spacing: -.015em; }
 }
 
 
@@ -470,7 +709,7 @@ a.chip:hover { text-decoration: none; filter: brightness(1.05); }
   font-family: var(--font-mono);
   font-size: .6875rem;
   letter-spacing: .05em;
-  color: var(--md-outline);
+  color: var(--md-on-surface-variant);
   text-transform: uppercase;
   pointer-events: none;
 }
@@ -490,39 +729,68 @@ a.chip:hover { text-decoration: none; filter: brightness(1.05); }
   transition: opacity var(--dur-short), background var(--dur-short);
 }
 .code-wrap:hover .code-copy, .code-copy:focus-visible { opacity: 1; }
-.code-copy:hover { background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
+/* 同上：hover 走状态层，.done 是复制成功这个结果状态，保留角色切换 */
 .code-copy.done { background: var(--md-primary-container); color: var(--md-on-primary-container); opacity: 1; }
 
 /* --------- 首页头条大卡片 --------- */
 .post-card.featured {
   background: var(--md-primary-container);
+  color: var(--md-on-primary-container);
   padding: 2rem 2rem 1.75rem;
   border-radius: var(--shape-xl);
 }
-.post-card.featured h2 { font-size: 1.625rem; color: var(--md-on-primary-container); }
+.post-card.featured h2 { font-size: 1.625rem; letter-spacing: -.01em; color: var(--md-on-primary-container); }
 .post-card.featured .excerpt { color: var(--md-on-primary-container); opacity: .8; -webkit-line-clamp: 3; }
 .post-card.featured .meta-row { color: var(--md-on-primary-container); opacity: .75; }
 .post-card.featured .chip { background: color-mix(in srgb, var(--md-on-primary-container) 12%, transparent); color: var(--md-on-primary-container); }
-.post-card.featured:hover { background: var(--md-primary-container); filter: brightness(1.03); }
+/* hover 反馈交给 .post-card 已有的状态层 + elevation，这里不再叠加 filter */
 
 /* --------- 归档页装饰性年份 --------- */
+/* ★ 这里刻意**不使用** opacity 做任何静态淡化，哪怕以后想让它变淡也不行。
+   原因是本主题最隐蔽的一个坑：.archive-year 在浮现动画的对象清单里
+   （见文件末尾"次第浮现"一节），而动画终态 .revealed{opacity:1} 与
+   .archive-year{opacity:X} 权重完全相同（都是单个 class），后写的赢，
+   淡化会被静默顶掉——历史上浅色模式就是这么坏的，而深色模式那条
+   "属性+类"权重更高所以一直正常，这种一半坏一半好的表现极难定位。
+
+   规则：**凡是进了浮现清单的元素，opacity 归动画系统独占，
+   自身的静态淡化一律改用带 alpha 的颜色（color-mix）。** */
 .archive-year {
-  font-size: 4.5rem;
-  font-weight: 700;
-  line-height: 1;
+  font: 700 4.5rem/1 var(--font-sans);
   letter-spacing: -.03em;
-  margin: 2.5rem 0 -0.5rem;
+  /* 上 4rem / 下 .75rem 是刻意的不对称：上边距是"组与组"的分界，
+     下边距是"标题与它统领的列表"的连接，前者必须明显大于后者，
+     这一组才会被读成一个整体。
+     注意别再改回负的下边距——那是年份还是淡色水印时的做法，
+     实色下会让首个条目贴着数字，正是"看着挤"的来源。 */
+  margin: 4rem 0 .75rem;
+  /* 与 .archive-list a 的 padding-left(.875rem) 对齐，再减 2px 光学补偿：
+     大号粗体数字自带侧边空隙，数值对齐时看起来仍会偏右一两个像素。 */
+  padding-left: calc(.875rem - 2px);
   color: var(--md-primary);
-  opacity: .16;
   user-select: none;
 }
-[data-theme="dark"] .archive-year { opacity: .28; }
+/* 深色模式必须单独压暗，而且要主动打破"两个模式同等对比度"的直觉。
+   实测对比度（对各自的页面底色）：
+     浅色 #2D6CB5 on #F8FAFD → 5.12:1
+     深色 #8AB4F8 on #101418 → 8.78:1   ← 改之前，比浅色还高 71%，刺眼的根源
+     深色 #536C93 on #101418 → 3.47:1   ← 现在
+   亮蓝压在近黑底上会产生光晕（halation），72px 粗体等于一整块发光面，
+   所以深色这一侧要刻意做得比浅色更低对比，观感才平衡。
+
+   ★ 调节方式：只改下面那个百分数。嫌刺眼往下调，嫌看不清往上调（65% ≈ 4.36:1）。
+   但**不要低于 50%**——再低对比度会跌破 3:1，那是 WCAG 对大号文字的下限。
+   ★ 另外：**绝对不要改用 opacity 来调**——本元素在浮现动画清单里，
+   opacity 会被 .revealed{opacity:1} 顶掉，原因见上方注释。 */
+[data-theme="dark"] .archive-year {
+  color: color-mix(in srgb, var(--md-primary) 55%, transparent);
+}
 
 /* --------- 标题锚点 --------- */
 .prose h2 .anchor, .prose h3 .anchor {
   margin-left: .4em;
   font-weight: 400;
-  color: var(--md-outline);
+  color: var(--md-on-surface-variant);
   opacity: 0;
   transition: opacity var(--dur-short), color var(--dur-short);
 }
@@ -577,11 +845,18 @@ a.chip:hover { text-decoration: none; filter: brightness(1.05); }
   font: var(--type-caption);
   padding: .5rem .875rem;
   border-radius: var(--shape-md) var(--shape-md) var(--shape-xs) var(--shape-md);
+  box-shadow: var(--elevation-float);
   animation: bubble-in var(--dur-short) var(--ease-emphasized);
 }
 @keyframes bubble-in {
   from { opacity: 0; transform: translateY(4px); }
   to   { opacity: 1; transform: none; }
+}
+/* 退场与入场对称：原路退回去，而不是说完话啪一下消失 */
+.crab-bubble.closing { animation: bubble-out var(--dur-short) var(--ease-emphasized) forwards; }
+@keyframes bubble-out {
+  from { opacity: 1; transform: none; }
+  to   { opacity: 0; transform: translateY(4px); }
 }
 @media (prefers-reduced-motion: reduce) { .crab-body { animation: none; } }
 @media (max-width: 640px) { .crab-pet { right: .875rem; bottom: .875rem; } }
@@ -604,7 +879,8 @@ a.chip:hover { text-decoration: none; filter: brightness(1.05); }
   cursor: pointer;
   transition: background var(--dur-short), color var(--dur-short), border-color var(--dur-short);
 }
-.filter-chip:hover { background: var(--md-surface-container); }
+/* hover 是即时反馈，走状态层；.active 是"被选中"这个持久状态，
+   才配得上真正的色彩角色切换——两者性质不同，不该用同一种表达 */
 .filter-chip.active {
   background: var(--md-secondary-container);
   color: var(--md-on-secondary-container);
@@ -636,7 +912,7 @@ a.chip:hover { text-decoration: none; filter: brightness(1.05); }
   left: .5rem; bottom: .5rem;
   max-width: calc(100% - 1rem);
   background: var(--md-scrim);
-  color: #fff;
+  color: var(--md-on-scrim);
   font: var(--type-caption);
   padding: .25rem .625rem;
   border-radius: var(--shape-sm);
@@ -649,17 +925,32 @@ a.chip:hover { text-decoration: none; filter: brightness(1.05); }
 .photo-item.filtered-out { display: none; }
 
 /* --------- 灯箱 --------- */
+/* 进出与搜索弹层同一套语言：遮罩单独淡、内容单独缩放，退场比入场更快。
+   同样刻意不在这些新规则里写 display——[hidden] 必须始终压得住 */
 .lightbox {
   position: fixed;
   inset: 0;
   z-index: 50;
-  background: rgba(10, 13, 18, .92);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 .lightbox[hidden] { display: none; }
+.lightbox::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--md-scrim-strong);
+  animation: lb-scrim-in var(--dur-medium) var(--ease-emphasized);
+}
+.lightbox.closing::before { animation: lb-scrim-out var(--dur-short) var(--ease-emphasized) forwards; }
+@keyframes lb-scrim-in  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes lb-scrim-out { from { opacity: 1; } to { opacity: 0; } }
+.lightbox.closing .lb-stage { animation: lb-stage-out var(--dur-short) var(--ease-emphasized) forwards; }
+@keyframes lb-stage-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: scale(.96); } }
 .lb-stage {
+  /* 定位是为了盖在上面那层绝对定位的遮罩之上 */
+  position: relative;
   margin: 0;
   max-width: min(88vw, 70rem);
   max-height: 88vh;
@@ -672,17 +963,33 @@ a.chip:hover { text-decoration: none; filter: brightness(1.05); }
   max-width: 100%;
   max-height: 76vh;
   border-radius: var(--shape-lg);
-  animation: lb-in var(--dur-medium) var(--ease-emphasized);
 }
+/* 首次打开：原地淡入缩放。切换上一张/下一张：顺着切换方向位移，
+   让"上一张/下一张"读起来是同一张影像在挪动，而不是消失又出现 */
+.lb-stage img.lb-in { animation: lb-in var(--dur-medium) var(--ease-emphasized); }
+.lb-stage img.lb-in-next { animation: lb-in-next var(--dur-medium) var(--ease-emphasized); }
+.lb-stage img.lb-in-prev { animation: lb-in-prev var(--dur-medium) var(--ease-emphasized); }
 @keyframes lb-in {
   from { opacity: 0; transform: scale(.96); }
   to   { opacity: 1; transform: none; }
 }
-.lb-stage figcaption { text-align: center; color: #E1E3E6; }
+@keyframes lb-in-next {
+  from { opacity: 0; transform: translateX(28px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes lb-in-prev {
+  from { opacity: 0; transform: translateX(-28px); }
+  to   { opacity: 1; transform: none; }
+}
+.lb-stage figcaption { text-align: center; color: var(--md-on-scrim); }
 .lb-title { font: var(--type-label); font-size: 1rem; }
-.lb-meta { font: var(--type-caption); color: #9AA0A6; margin-top: .25rem; }
-.lightbox .icon-btn { color: #E1E3E6; position: fixed; }
-.lightbox .icon-btn:hover { background: rgba(255, 255, 255, .12); }
+.lb-meta { font: var(--type-caption); color: var(--md-on-scrim-variant); margin-top: .25rem; }
+/* hover 由统一状态层接管：它取的是本元素的 currentColor（这里是浅色），
+   在深色灯箱上自然就是浅色叠层，无需再为深色场景手写一条 rgba */
+/* 这几个按钮是 fixed、不在 .lb-stage 里，得单独跟上退场，
+   否则会出现"遮罩淡走了、按钮还杵在那儿直到最后一帧才消失" */
+.lightbox.closing .icon-btn { animation: lb-scrim-out var(--dur-short) var(--ease-emphasized) forwards; }
+.lightbox .icon-btn { color: var(--md-on-scrim); position: fixed; }
 .lb-close { top: 1rem; right: 1rem; }
 .lb-nav { top: 50%; transform: translateY(-50%); width: 48px; height: 48px; }
 .lb-nav svg { width: 26px; height: 26px; }
@@ -694,7 +1001,7 @@ a.chip:hover { text-decoration: none; filter: brightness(1.05); }
   left: 50%;
   transform: translateX(-50%);
   font: var(--type-caption);
-  color: #9AA0A6;
+  color: var(--md-on-scrim-variant);
 }
 @media (max-width: 640px) {
   .photo-wall { columns: 2 8rem; column-gap: .5rem; }
@@ -739,7 +1046,7 @@ a.chip:hover { text-decoration: none; filter: brightness(1.05); }
 @supports not (clip-path: url(#a)) { .about-avatar { border-radius: var(--shape-full); } }
 @media (max-width: 640px) {
   .about-intro { flex-direction: column-reverse; align-items: flex-start; padding: 1.5rem 0 1.75rem; }
-  .about-intro h1 { font-size: 2rem; }
+  .about-intro h1 { font-size: 2rem; letter-spacing: -.015em; }
   .about-avatar { width: 84px; height: 84px; }
 }
 
@@ -832,6 +1139,14 @@ html.js body:not([data-reveal="off"]) :is(.hero, .about-intro, .post-card, .phot
 
 /* 页面之间交叉淡化过渡（支持的浏览器自动启用） */
 @view-transition { navigation: auto; }
+/* ★ 全局 reduced-motion 兜底用的是 `*`，而视图过渡跑在 ::view-transition-*
+   伪元素上——`*` 匹配不到它们，所以那条兜底对跨页过渡是失效的，必须在这里
+   单独关一次。新增任何跑在伪元素上的动画时，同样要记得它逃得出 `*`。 */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) { animation: none !important; }
+}
 ::view-transition-old(root) { animation-duration: .18s; }
 ::view-transition-new(root) { animation-duration: .25s; }
 

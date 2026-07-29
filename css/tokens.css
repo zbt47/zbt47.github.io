@@ -21,13 +21,21 @@
   --md-on-surface: #191C1F;
   --md-on-surface-variant: #42474D;
 
-  --md-outline: #C2C7CE;
+  --md-outline: #848B94;
   --md-outline-variant: #DEE3E9;
 
   --md-error: #BA1A1A;
   --md-inverse-surface: #2E3134;
   --md-inverse-on-surface: #EFF1F4;
   --md-scrim: rgba(0, 0, 0, .4);
+
+  /* 固定深色浮层（灯箱、照片说明）：照片必须在深色底上看，浅色模式下
+     也一样，所以这三个角色故意不做深浅两套——两个主题下取值相同，
+     深色区块里不再重复定义。它们是家规 #1 的正规出口：灯箱曾经散着
+     6 个硬编码色值，现在都收敛到这里。 */
+  --md-scrim-strong: rgba(10, 13, 18, .92);
+  --md-on-scrim: #FFFFFF;
+  --md-on-scrim-variant: #9AA0A6;
 
   /* --- 形状 --- */
   --shape-xs: 4px;
@@ -36,6 +44,25 @@
   --shape-lg: 16px;
   --shape-xl: 28px;
   --shape-full: 999px;
+
+  /* --- 高度（elevation）：颜色取界面自身的 on-surface 角色，不用通用黑——
+     纯黑压在偏冷色调的浅色背景上会显脏。分两种用法：
+
+     · hover：留在文档流里的元素（卡片、按钮）静止时不带阴影，只有交互
+       发生的瞬间才短暂浮现，阴影是"动作的证据"而不是常驻底纹。
+     · float：真正脱离文档流、压在遮罩之上的浮层（搜索弹层、气泡）。
+       它们在物理上就悬在页面上方，静止时也该有高度，否则会显得像贴纸。 --- */
+  --shadow-tint: var(--md-on-surface);
+  --elevation-hover: 0 1px 2px color-mix(in srgb, var(--shadow-tint) 10%, transparent),
+                     0 3px 10px color-mix(in srgb, var(--shadow-tint) 8%, transparent);
+  --elevation-float: 0 2px 4px color-mix(in srgb, var(--shadow-tint) 8%, transparent),
+                     0 8px 24px color-mix(in srgb, var(--shadow-tint) 14%, transparent);
+
+  /* --- 状态层（state layer）不透明度：M3 标准三档，
+     所有可交互组件共用，叠加色取组件自身的 currentColor --- */
+  --state-hover: .08;
+  --state-focus: .12;
+  --state-press: .12;
 
   /* --- 字阶（M3 type scale 精选） --- */
   --type-display: 700 2.25rem/1.2 var(--font-sans);
@@ -47,7 +74,8 @@
 
   --font-sans: "Figtree", "Noto Sans SC", "PingFang SC",
                "Microsoft Yahei", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code",
+               Consolas, "Liberation Mono", monospace;
 
   /* --- 动效（M3 emphasized easing） --- */
   --ease-emphasized: cubic-bezier(.2, 0, 0, 1);
@@ -79,12 +107,18 @@
   --md-on-surface: #E1E3E6;
   --md-on-surface-variant: #C2C7CE;
 
-  --md-outline: #4C525A;
+  --md-outline: #5F666E;
   --md-outline-variant: #33383F;
 
   --md-error: #FFB4AB;
   --md-inverse-surface: #E1E3E6;
   --md-inverse-on-surface: #2E3134;
+
+  /* 深色背景本身已经很暗，阴影只作最小提示；直接用黑色不会显脏，
+     因为暗背景和暗阴影本就是同一个色系，不存在浅色下那种冷暖打架 */
+  --shadow-tint: #000000;
+  --elevation-hover: 0 2px 10px color-mix(in srgb, var(--shadow-tint) 40%, transparent);
+  --elevation-float: 0 6px 22px color-mix(in srgb, var(--shadow-tint) 55%, transparent);
 
   color-scheme: dark;
 }
